@@ -27,6 +27,15 @@ const parseRequestLine = (request) => {
   return { method, uri, protocol };
 };
 
+const getStatusCodeAndBody = (content, uri) => {
+  if (uri in content) return { statusCode: 404, responseBody: content[uri] };
+
+  return {
+    statusCode: 200,
+    responseBody: `${uri} not found`,
+  };
+};
+
 const generateRespose = (uri) => {
   const content = {
     "/": "home",
@@ -34,8 +43,7 @@ const generateRespose = (uri) => {
     "/echo": "echo",
   };
 
-  const statusCode = !(uri in content) ? 404 : 200;
-  const responseBody = statusCode === 404 ? ERROR_404 : content[uri];
+  const { statusCode, responseBody } = getStatusCodeAndBody(content, uri);
 
   return formatResponse(statusCode, responseBody);
 };
