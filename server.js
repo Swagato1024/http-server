@@ -1,8 +1,6 @@
 const { log } = require("node:console");
 const net = require("node:net");
 
-const server = net.createServer();
-
 // const content = {
 //   "/": {
 //     "/": "home",
@@ -10,21 +8,74 @@ const server = net.createServer();
 //   },
 // };
 
-const ERROR_404 = "Page not found";
 const BAD_REQUEST = "bad request";
+const METHOD_NOT_AVAILABLE = "method not available";
 
-const isKnownProtocol = (protocol) => {
-  return protocol.toUpperCase() === "HTTP/1.1";
-};
-
-const formatResponse = (statusCode, responseBody) => {
+const formatResponse = ({ statusCode, responseBody }) => {
   const statusMsg = {
     404: "NOT_FOUND",
     200: "OK",
     400: "BAD_REQUEST",
+    405: "METHOD_NOT_ALLOWED",
   };
 
-  return `HTTP/1.1 ${statusCode} ${statusMsg[statusCode]} \n\n ${responseBody}`;
+  return `HTTP/1.1 ${statusCode} ${statusMsg[statusCode]}\n\n${responseBody}`;
+};
+
+const isValidProtocol = (protocol) => {
+  return protocol.toUpperCase() === "HTTP/1.1";
+};
+
+const isValidMethod = (method) => method === "GET";
+
+const respondToUriNotFound = (uri) => {
+  const respose = {
+    statusCode: 200,
+    responseBody: `${uri} not found`,
+  };
+
+  return formatResponse(respose);
+};
+
+const respondToInvalidProtocol = () => {
+  const respose = {
+    statusCode: 400,
+    responseBody: BAD_REQUEST,
+  };
+
+  return formatResponse(respose);
+};
+
+const respondToInvalidMethod = () => {
+  const response = {
+    statusCode: 405,
+    responseBody: METHOD_NOT_AVAILABLE,
+  };
+
+  return formatResponse(response);
+};
+
+const respondToValidRequest = (uri) => {
+  const content = {
+    "/": "home",
+    "/ping": "pong",
+    "/echo": "echo",
+  };
+
+  if (uri in content) {
+    const response = { statusCode: 200, responseBody: content[uri] };
+    return formatResponse(response);
+  }
+
+  return respondToUriNotFound(uri);
+};
+
+const generateRespose = ({ method, uri, protocol }) => {
+  if (!isValidProtocol(protocol)) return respondToInvalidProtocol();
+
+  if (!isValidMethod(method)) return respondToInvalidMethod();
+
+  return respondToValidRequest(uri);
 };
 
 const parseRequestLine = (request) => {
@@ -33,45 +84,27 @@ const parseRequestLine = (request) => {
   return { method, uri, protocol: protocol.trim() };
 };
 
-const getStatusCodeAndBody = (content, uri) => {
-  if (uri in content) return { statusCode: 200, responseBody: content[uri] };
-
-  return {
-    statusCode: 404,
-    responseBody: `${uri} not found`,
-  };
-};
-
-const generateRespose = (protocol, uri) => {
-  if (!isKnownProtocol(protocol)) {
-    return formatResponse("", 400, BAD_REQUEST);
-  }
-
-  const content = {
-    "/": "home",
-    "/ping": "pong",
-    "/echo": "echo",
-  };
-
-  const { statusCode, responseBody } = getStatusCodeAndBody(content, uri);
-
-  return formatResponse(statusCode, responseBody);
-};
-
-server.on("connection", (socket) => {
+const onConnection = (socket) => {
   socket.setEncoding("utf-8");
 
   socket.on("data", (request) => {
-    const { uri, protocol } = parseRequestLine(request);
+    const readLine = parseRequestLine(request);
     console.log("protocol", protocol);
 
-    const respose = generateRespose(protocol, uri);
+    const respose = generateRespose(readLine);
 
     socket.write(respose);
     socket.end();
   });
-});
+};
 
-server.listen(8000, () => {
-  log(`listening on 8000`);
-});
+const main = () => {
+  const server = net.createServer();
+  server.on("connection", (socket) => onConnection(socket));
+
+  server.listen(8000, () => {
+    log(`listening on 8000`);
+  });
+};
+
+main();
