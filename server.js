@@ -11,11 +11,17 @@ const server = net.createServer();
 // };
 
 const ERROR_404 = "Page not found";
+const BAD_REQUEST = "bad request";
+
+const isKnownProtocol = (protocol) => {
+  return protocol.toUpperCase() === "HTTP/1.1";
+};
 
 const formatResponse = (statusCode, responseBody) => {
   const statusMsg = {
     404: "NOT_FOUND",
     200: "OK",
+    400: "BAD_REQUEST",
   };
 
   return `HTTP/1.1 ${statusCode} ${statusMsg[statusCode]} \n\n ${responseBody}`;
@@ -24,19 +30,23 @@ const formatResponse = (statusCode, responseBody) => {
 const parseRequestLine = (request) => {
   const [requestLine] = request.split("\n");
   const [method, uri, protocol] = requestLine.split(" ");
-  return { method, uri, protocol };
+  return { method, uri, protocol: protocol.trim() };
 };
 
 const getStatusCodeAndBody = (content, uri) => {
-  if (uri in content) return { statusCode: 404, responseBody: content[uri] };
+  if (uri in content) return { statusCode: 200, responseBody: content[uri] };
 
   return {
-    statusCode: 200,
+    statusCode: 404,
     responseBody: `${uri} not found`,
   };
 };
 
-const generateRespose = (uri) => {
+const generateRespose = (protocol, uri) => {
+  if (!isKnownProtocol(protocol)) {
+    return formatResponse("", 400, BAD_REQUEST);
+  }
+
   const content = {
     "/": "home",
     "/ping": "pong",
@@ -52,8 +62,10 @@ server.on("connection", (socket) => {
   socket.setEncoding("utf-8");
 
   socket.on("data", (request) => {
-    const { uri } = parseRequestLine(request);
-    const respose = generateRespose(uri);
+    const { uri, protocol } = parseRequestLine(request);
+    console.log("protocol", protocol);
+
+    const respose = generateRespose(protocol, uri);
 
     socket.write(respose);
     socket.end();
