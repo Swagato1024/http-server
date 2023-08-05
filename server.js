@@ -1,13 +1,6 @@
 const { log } = require("node:console");
 const net = require("node:net");
 
-// const content = {
-//   "/": {
-//     "/": "home",
-//     "ping": "pong",
-//   },
-// };
-
 const BAD_REQUEST = "bad request";
 const METHOD_NOT_AVAILABLE = "method not available";
 
@@ -28,10 +21,10 @@ const isValidProtocol = (protocol) => {
 
 const isValidMethod = (method) => method === "GET";
 
-const respondToUriNotFound = (uri) => {
+const respondToURINotFound = (URI) => {
   const respose = {
     statusCode: 200,
-    responseBody: `${uri} not found`,
+    responseBody: `${URI} not found`,
   };
 
   return formatResponse(respose);
@@ -55,33 +48,48 @@ const respondToInvalidMethod = () => {
   return formatResponse(response);
 };
 
-const respondToValidRequest = (uri) => {
+const hasComponents = (URI) => URI.split("/").length > 2;
+
+const respondToURIWithComponents = (URI) => {
+  const [, root, ...remainingPaths] = URI.split("/");
+  return {
+    statusCode: 200,
+    responseBody: remainingPaths.join("/"),
+  };
+};
+
+const respondToURI = (URI) => {
   const content = {
     "/": "home",
     "/ping": "pong",
     "/echo": "echo",
   };
 
-  if (uri in content) {
-    const response = { statusCode: 200, responseBody: content[uri] };
+  if (hasComponents(URI)) {
+    const response = respondToURIWithComponents(URI);
     return formatResponse(response);
   }
 
-  return respondToUriNotFound(uri);
+  if (URI in content) {
+    const response = { statusCode: 200, responseBody: content[URI] };
+    return formatResponse(response);
+  }
+
+  return respondToURINotFound(URI);
 };
 
-const generateRespose = ({ method, uri, protocol }) => {
+const generateResponse = ({ method, URI, protocol }) => {
   if (!isValidProtocol(protocol)) return respondToInvalidProtocol();
 
   if (!isValidMethod(method)) return respondToInvalidMethod();
 
-  return respondToValidRequest(uri);
+  return respondToURI(URI);
 };
 
 const parseRequestLine = (request) => {
   const [requestLine] = request.split("\n");
-  const [method, uri, protocol] = requestLine.split(" ");
-  return { method, uri, protocol: protocol.trim() };
+  const [method, URI, protocol] = requestLine.split(" ");
+  return { method, URI, protocol: protocol.trim() };
 };
 
 const onConnection = (socket) => {
@@ -89,9 +97,7 @@ const onConnection = (socket) => {
 
   socket.on("data", (request) => {
     const readLine = parseRequestLine(request);
-    console.log("protocol", protocol);
-
-    const respose = generateRespose(readLine);
+    const respose = generateResponse(readLine);
 
     socket.write(respose);
     socket.end();
