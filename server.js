@@ -78,7 +78,32 @@ const respondToURI = (URI) => {
   return respondToURINotFound(URI);
 };
 
-const generateResponse = ({ method, URI, protocol }) => {
+const respondToMissingUserAgent = () => {
+  const respose = {
+    statusCode: 200,
+    responseBody: `${URI} not found`,
+  };
+
+  return formatResponse(respose);
+};
+
+const isUserAgentPresent = (header) => "User-Agent" in header;
+
+const parseHeader = (request) => {
+  const header = request.split("\n").slice(1);
+  const requestHeader = Object.fromEntries(
+    header.map((line) => line.split(":"))
+  );
+
+  return requestHeader;
+};
+
+const generateResponse = (request) => {
+  const { method, URI, protocol } = parseRequestLine(request);
+  const header = parseHeader(request);
+
+  if (!isUserAgentPresent(header)) return respondToMissingUserAgent();
+
   if (!isValidProtocol(protocol)) return respondToInvalidProtocol();
 
   if (!isValidMethod(method)) return respondToInvalidMethod();
@@ -96,8 +121,8 @@ const onConnection = (socket) => {
   socket.setEncoding("utf-8");
 
   socket.on("data", (request) => {
-    const readLine = parseRequestLine(request);
-    const respose = generateResponse(readLine);
+    console.log(request);
+    const respose = generateResponse(request.trim());
 
     socket.write(respose);
     socket.end();
