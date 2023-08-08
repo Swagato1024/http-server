@@ -21,7 +21,9 @@ class Handler {
     return request.protocol.toUpperCase() === "HTTP/1.1";
   }
 
-  #isAllowedMethod() {}
+  #isAllowedMethod(request) {
+    return request.method === "GET";
+  }
 
   #handleBadRequest(request, response) {
     response.setStatus(400);
@@ -48,10 +50,10 @@ class Handler {
       return;
     }
 
-    // if (!this.#isAllowedMethod(request)) {
-    //   this.#handleBadRequest(request, response);
-    //   return;
-    // }
+    if (!this.#isAllowedMethod(request)) {
+      this.#handleBadRequest(request, response);
+      return;
+    }
 
     this.#route(request, response);
   }

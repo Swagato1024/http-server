@@ -4,7 +4,7 @@ const net = require("node:net");
 const { Response } = require("./response");
 const { Handler } = require("./handler");
 const { Request } = require("./request");
-const { respondToPing, respondToHome } = require("./routers");
+const { respondToPing, respondToHome, respondToEcho } = require("./routers");
 
 const onConnection = (socket) => {
   socket.setEncoding("utf-8");
@@ -12,6 +12,7 @@ const onConnection = (socket) => {
   const handler = new Handler();
   handler.addRouteHandler("/", respondToHome);
   handler.addRouteHandler("/ping", respondToPing);
+  handler.addRouteHandler("/echo", respondToEcho);
 
   socket.on("data", (rawRequest) => {
     const request = new Request(rawRequest);
