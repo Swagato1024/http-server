@@ -1,131 +1,24 @@
 const { log } = require("node:console");
 const net = require("node:net");
 
-const BAD_REQUEST = "bad request";
-const METHOD_NOT_AVAILABLE = "method not available";
-
-const formatResponse = ({ statusCode, responseBody }) => {
-  const statusMsg = {
-    404: "NOT_FOUND",
-    200: "OK",
-    400: "BAD_REQUEST",
-    405: "METHOD_NOT_ALLOWED",
-  };
-
-  return `HTTP/1.1 ${statusCode} ${statusMsg[statusCode]}\n\n${responseBody}`;
-};
-
-const isValidProtocol = (protocol) => {
-  return protocol.toUpperCase() === "HTTP/1.1";
-};
-
-const isValidMethod = (method) => method === "GET";
-
-const respondToURINotFound = (URI) => {
-  const respose = {
-    statusCode: 200,
-    responseBody: `${URI} not found`,
-  };
-
-  return formatResponse(respose);
-};
-
-const respondToInvalidProtocol = () => {
-  const respose = {
-    statusCode: 400,
-    responseBody: BAD_REQUEST,
-  };
-
-  return formatResponse(respose);
-};
-
-const respondToInvalidMethod = () => {
-  const response = {
-    statusCode: 405,
-    responseBody: METHOD_NOT_AVAILABLE,
-  };
-
-  return formatResponse(response);
-};
-
-const hasComponents = (URI) => URI.split("/").length > 2;
-
-const respondToURIWithComponents = (URI) => {
-  const [, root, ...remainingPaths] = URI.split("/");
-  return {
-    statusCode: 200,
-    responseBody: remainingPaths.join("/"),
-  };
-};
-
-const respondToURI = (URI) => {
-  const content = {
-    "/": "home",
-    "/ping": "pong",
-    "/echo": "echo",
-  };
-
-  if (hasComponents(URI)) {
-    const response = respondToURIWithComponents(URI);
-    return formatResponse(response);
-  }
-
-  if (URI in content) {
-    const response = { statusCode: 200, responseBody: content[URI] };
-    return formatResponse(response);
-  }
-
-  return respondToURINotFound(URI);
-};
-
-const respondToMissingUserAgent = () => {
-  const respose = {
-    statusCode: 200,
-    responseBody: `${URI} not found`,
-  };
-
-  return formatResponse(respose);
-};
-
-const isUserAgentPresent = (header) => "User-Agent" in header;
-
-const parseHeader = (request) => {
-  const header = request.split("\n").slice(1);
-  const requestHeader = Object.fromEntries(
-    header.map((line) => line.split(":"))
-  );
-
-  return requestHeader;
-};
-
-const generateResponse = (request) => {
-  const { method, URI, protocol } = parseRequestLine(request);
-  const header = parseHeader(request);
-
-  if (!isUserAgentPresent(header)) return respondToMissingUserAgent();
-
-  if (!isValidProtocol(protocol)) return respondToInvalidProtocol();
-
-  if (!isValidMethod(method)) return respondToInvalidMethod();
-
-  return respondToURI(URI);
-};
-
-const parseRequestLine = (request) => {
-  const [requestLine] = request.split("\n");
-  const [method, URI, protocol] = requestLine.split(" ");
-  return { method, URI, protocol: protocol.trim() };
-};
+const { Response } = require("./response");
+const { Handler } = require("./handler");
+const { Request } = require("./request");
+const { respondToPing, respondToHome } = require("./routers");
 
 const onConnection = (socket) => {
   socket.setEncoding("utf-8");
 
-  socket.on("data", (request) => {
-    console.log(request);
-    const respose = generateResponse(request.trim());
+  const handler = new Handler();
+  handler.addRouteHandler("/", respondToHome);
+  handler.addRouteHandler("/ping", respondToPing);
 
-    socket.write(respose);
-    socket.end();
+  socket.on("data", (rawRequest) => {
+    const request = new Request(rawRequest);
+    request.parse();
+    const response = new Response(socket);
+
+    handler.handleRequest(request, response);
   });
 };
 
