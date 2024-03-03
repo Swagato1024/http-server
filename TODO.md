@@ -1,48 +1,46 @@
-const validations = [cb1, cb2];
+const a = (req, res, next) => {
+console.log("a: ", req, res);
 
-const validate() {
-let i = 0;
-
-const nextHandler => {
-i++;
-return validations[i];
-}
-
-const [cb] = validations;
-cb(req, res, nextHandler);
-}
-
-const generateWrapperFns = () {
-this.#validations.map((cb) => {
-return () => {
-const next = validations[i];
-cb(req, res, next);
-}
-})
-}
-
-const createWrapperFn = () => {
-  this.#validations.map();
+next();
 };
 
-const a = (x, next) => {
-  console.log("a", x);
-  next();
+const b = (req, res, next) => {
+console.log("b: ", req, res);
+
+next();
 };
 
-const b = (x, next) => {
-  console.log("b", x);
-  next();
-};
+functions = [a, b, c, d];
 
-const c = (x, next) => {
-  console.log("c", x);
-};
+const wrapC = (req, res) => {
+//do something
 
-const fn = [a, b, c];
-const wrappers = fn.map((cb, index) => (x) => {
-  if (index < fn.length) {
-    next = fn[index + 1];
-   return  cb(x, next);
-  }
-});
+c(req, res, () => (req, res, d))
+}
+
+const wrapB = (req, res) => {
+//do something
+
+b(req, res, () => (req, res, wrapC))
+}
+
+const wrapA = (req, res) => {
+// do something
+
+a(req, res, () => (req, res, wrapB));
+}
+
+wrapA(req, res);
+
+
+
+
+
+cbs = [
+{req, res, fn: a, next: () => b(req, res)},
+
+{req, res, fn: b, next: () => c(req, res)}]
+
+fn(req, res, next)
+
+

@@ -20,7 +20,7 @@ const onConnection = (socket) => {
     const response = new Response(socket);
 
     handler.handleRequest(request, response);
-  });
+  }); 
 };
 
 const main = () => {

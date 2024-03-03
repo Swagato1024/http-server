@@ -1,7 +1,7 @@
 class Handler {
   #router;
 
-  constructor(request, response) {
+  constructor() {
     this.#router = {};
   }
 
